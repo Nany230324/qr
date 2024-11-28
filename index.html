@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lector de QR</title>
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      background-color: #f4f4f9;
+    }
+    #qr-reader {
+      width: 100%;
+      height: 60vh;
+      max-width: 400px;
+      margin: 20px auto;
+      position: relative;
+      border: 5px solid #00D200;
+      border-radius: 10px;
+      background-color: black;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+    a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lector de QR</h1>
+  <p>Apunta la cámara hacia un código QR para escanearlo:</p>
+
+  <!-- Contenedor para el lector QR -->
+  <div id="qr-reader"></div>
+
+  <!-- Lugar donde se mostrará el resultado del escaneo -->
+  <p id="result">Escanea un código QR para ver el resultado aquí.</p>
+
+  <script>
+    // Función para manejar el éxito del escaneo
+    function onScanSuccess(decodedText, decodedResult) {
+      const resultElement = document.getElementById("result");
+      resultElement.innerHTML = `Código QR detectado: <a href="${decodedText}" target="_blank">${decodedText}</a>`;
+      html5QrCode.stop().catch(err => console.error(err));
+    }
+
+    // Función para manejar el fallo del escaneo
+    function onScanFailure(error) {
+      console.warn(`Error de escaneo: ${error}`);
+    }
+
+    // Función para verificar si la página se está ejecutando bajo HTTPS
+    function isHttps() {
+      if (window.location.protocol !== 'https:') {
+        alert('Por favor, accede a esta página mediante HTTPS para que funcione el acceso a la cámara.');
+        return false;
+      }
+      return true;
+    }
+
+    // Función para manejar los permisos de la cámara
+    function handleCameraPermissions() {
+      return new Promise((resolve, reject) => {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => {
+              resolve(stream);
+            })
+            .catch(err => {
+              reject("No se pudo acceder a la cámara. Por favor, revisa los permisos.");
+            });
+        } else {
+          reject("Tu navegador no soporta el acceso a la cámara.");
+        }
+      });
+    }
+
+    // Función para iniciar el lector de QR
+    function startCamera() {
+      if (!isHttps()) return;  // Verificar si la página está cargada bajo HTTPS
+
+      handleCameraPermissions()
+        .then((stream) => {
+          const videoElement = document.createElement("video");
+          videoElement.srcObject = stream;
+          videoElement.play();
+          
+          // Asegurarse de que el flujo de video está listo
+          videoElement.onloadedmetadata = () => {
+            html5QrCode.start(
+              { facingMode: "environment" }, // Cámara trasera
+              { fps: 10, qrbox: 250 },       // Configuración
+              onScanSuccess,
+              onScanFailure
+            ).catch(err => {
+              console.error(`Error al iniciar el escaneo: ${err}`);
+            });
+          };
+        })
+        .catch(errorMessage => {
+          alert(errorMessage);
+          console.error(errorMessage);
+        });
+    }
+
+    // Iniciar la cámara al cargar la página
+    window.onload = function() {
+      startCamera();
+    };
+  </script>
+</body>
+</html>
